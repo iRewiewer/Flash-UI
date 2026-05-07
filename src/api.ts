@@ -101,6 +101,19 @@ export async function recordGamePlay(gameId: string): Promise<Game> {
   return data.game;
 }
 
+export async function updateGameFavorite(gameId: string, favorite: boolean): Promise<Game> {
+  const response = await fetch(`/api/games/${encodeURIComponent(gameId)}/favorite`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ favorite })
+  });
+
+  const data = await parseResponse<GameResponse>(response);
+  return data.game;
+}
+
 export async function deleteGame(gameId: string): Promise<string> {
   const response = await fetch(`/api/games/${encodeURIComponent(gameId)}`, {
     method: "DELETE"
@@ -128,6 +141,15 @@ export async function importMetadata(file: File): Promise<Game[]> {
   const response = await fetch("/api/metadata/import", {
     method: "POST",
     body: form
+  });
+
+  const data = await parseResponse<GamesResponse>(response);
+  return data.games;
+}
+
+export async function clearFavorites(): Promise<Game[]> {
+  const response = await fetch("/api/favorites/clear", {
+    method: "POST"
   });
 
   const data = await parseResponse<GamesResponse>(response);

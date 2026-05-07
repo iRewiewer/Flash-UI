@@ -6,6 +6,7 @@ import {
   Pencil,
   Search,
   Settings,
+  Star,
   Tags
 } from "lucide-react";
 import type { Game, LayoutMode, ShellLayoutMode } from "../types";
@@ -16,11 +17,14 @@ type GameLibraryProps = {
   selectedId: string | null;
   layout: LayoutMode;
   shellLayout: ShellLayoutMode;
+  favoriteOnly: boolean;
   query: string;
   onQueryChange: (query: string) => void;
   onLayoutChange: (layout: LayoutMode) => void;
   onShellLayoutChange: () => void;
+  onFavoriteFilterToggle: () => void;
   onSelect: (game: Game) => void;
+  onFavoriteToggle: (game: Game) => void;
   onEdit: (game: Game) => void;
   onUploadClick: () => void;
   onSettingsClick: () => void;
@@ -31,11 +35,14 @@ export function GameLibrary({
   selectedId,
   layout,
   shellLayout,
+  favoriteOnly,
   query,
   onQueryChange,
   onLayoutChange,
   onShellLayoutChange,
+  onFavoriteFilterToggle,
   onSelect,
+  onFavoriteToggle,
   onEdit,
   onUploadClick,
   onSettingsClick
@@ -68,6 +75,14 @@ export function GameLibrary({
           />
         </label>
         <div className="segmented" aria-label="Layout">
+          <button
+            className={favoriteOnly ? "active" : ""}
+            type="button"
+            onClick={onFavoriteFilterToggle}
+            title={favoriteOnly ? "Show all games" : "Show favorites only"}
+          >
+            <Star size={17} />
+          </button>
           <button
             className={layout === "grid" ? "active" : ""}
             type="button"
@@ -112,24 +127,45 @@ export function GameLibrary({
                 )}
               </span>
             </span>
-            <span
-              className="inlineEdit"
-              role="button"
-              tabIndex={0}
-              title="Edit metadata"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEdit(game);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
+            <span className="inlineActions">
+              <span
+                className={`inlineAction ${game.favorite ? "favorite" : ""}`}
+                role="button"
+                tabIndex={0}
+                title={game.favorite ? "Remove favorite" : "Mark favorite"}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onFavoriteToggle(game);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onFavoriteToggle(game);
+                  }
+                }}
+              >
+                <Star size={15} fill={game.favorite ? "currentColor" : "none"} />
+              </span>
+              <span
+                className="inlineAction"
+                role="button"
+                tabIndex={0}
+                title="Edit metadata"
+                onClick={(event) => {
                   event.stopPropagation();
                   onEdit(game);
-                }
-              }}
-            >
-              <Pencil size={15} />
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onEdit(game);
+                  }
+                }}
+              >
+                <Pencil size={15} />
+              </span>
             </span>
           </button>
         ))}

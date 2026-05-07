@@ -25,6 +25,7 @@ export type Game = {
   description: string;
   notes: string;
   tags: string[];
+  favorite: boolean;
   dateAdded: string;
   timesPlayed: number;
   lastPlayedAt: string | null;

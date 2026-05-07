@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  clearFavorites,
   createFormState,
   deleteGame,
   exportMetadata,
   fetchGames,
   fetchSettings,
   importMetadata,
+  updateGameFavorite,
   updateGameMetadata,
   updateSettings,
   updateGameThumbnail,
   uploadGame
 } from "./api";
-import { FileUp, Settings } from "lucide-react";
+import { FileUp, Settings, Star } from "lucide-react";
 import { DropOverlay } from "./components/DropOverlay";
 import { GameLibrary } from "./components/GameLibrary";
 import { MetadataModal } from "./components/MetadataModal";
@@ -38,6 +40,7 @@ export function App() {
   const [games, setGames] = useState<Game[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [favoriteOnly, setFavoriteOnly] = useState(() => localStorage.getItem("flash-ui-favorite-only") === "1");
   const [layout, setLayout] = useState<LayoutMode>(() => {
     return localStorage.getItem("flash-ui-layout") === "list" ? "list" : "grid";
   });
@@ -71,17 +74,22 @@ export function App() {
   }, [shellLayout]);
 
   useEffect(() => {
+    localStorage.setItem("flash-ui-favorite-only", favoriteOnly ? "1" : "0");
+  }, [favoriteOnly]);
+
+  useEffect(() => {
     localStorage.setItem("flash-ui-volume", String(volume));
   }, [volume]);
 
   const filteredGames = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    const visibleGames = favoriteOnly ? games.filter((game) => game.favorite) : games;
 
     if (!normalizedQuery) {
-      return games;
+      return visibleGames;
     }
 
-    return games.filter((game) => {
+    return visibleGames.filter((game) => {
       return [
         game.name,
         game.description,
@@ -94,7 +102,7 @@ export function App() {
         .toLowerCase()
         .includes(normalizedQuery);
     });
-  }, [games, query]);
+  }, [favoriteOnly, games, query]);
 
   const selectedGame = useMemo(() => {
     return games.find((game) => game.id === selectedId) || null;
@@ -291,6 +299,38 @@ export function App() {
     }
   }
 
+  async function handleClearFavorites() {
+    const confirmed = window.confirm("Clear favorites from every game in the current library?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      const nextGames = await clearFavorites();
+      setGames(nextGames);
+      setFavoriteOnly(false);
+    } catch (favoriteError) {
+      setError(favoriteError instanceof Error ? favoriteError.message : "Could not clear favorites.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleFavorite(game: Game) {
+    setError(null);
+
+    try {
+      const updated = await updateGameFavorite(game.id, !game.favorite);
+      upsertGame(updated);
+    } catch (favoriteError) {
+      setError(favoriteError instanceof Error ? favoriteError.message : "Could not update favorite.");
+    }
+  }
+
   function upsertGame(game: Game) {
     setGames((current) => {
       const existing = current.some((item) => item.id === game.id);
@@ -336,8 +376,10 @@ export function App() {
       {shellLayout === "compact" && (
         <LayoutRail
           shellLayout={shellLayout}
+          favoriteOnly={favoriteOnly}
           onUploadClick={openUploadPicker}
           onShellLayoutChange={cycleShellLayout}
+          onFavoriteFilterToggle={() => setFavoriteOnly((current) => !current)}
           onSettingsClick={() => setSettingsModalOpen(true)}
         />
       )}
@@ -348,16 +390,19 @@ export function App() {
           selectedId={selectedId}
           layout={layout}
           shellLayout={shellLayout}
+          favoriteOnly={favoriteOnly}
           query={query}
           onQueryChange={setQuery}
           onLayoutChange={setLayout}
           onShellLayoutChange={cycleShellLayout}
+          onFavoriteFilterToggle={() => setFavoriteOnly((current) => !current)}
           onSelect={(game) => {
             setSelectedId(game.id);
             if (shellLayout === "library") {
               setShellLayout("compact");
             }
           }}
+          onFavoriteToggle={toggleFavorite}
           onEdit={(game) => setModal({ type: "edit", game, initialValue: createFormState(game) })}
           onUploadClick={openUploadPicker}
           onSettingsClick={() => setSettingsModalOpen(true)}
@@ -405,6 +450,7 @@ export function App() {
           onSave={saveSettings}
           onExportMetadata={handleExportMetadata}
           onImportMetadata={handleImportMetadata}
+          onClearFavorites={handleClearFavorites}
           onClearBrowserStorage={handleClearBrowserStorage}
         />
       )}
@@ -483,13 +529,17 @@ async function clearBrowserStorage() {
 
 function LayoutRail({
   shellLayout,
+  favoriteOnly,
   onUploadClick,
   onShellLayoutChange,
+  onFavoriteFilterToggle,
   onSettingsClick
 }: {
   shellLayout: ShellLayoutMode;
+  favoriteOnly: boolean;
   onUploadClick: () => void;
   onShellLayoutChange: () => void;
+  onFavoriteFilterToggle: () => void;
   onSettingsClick: () => void;
 }) {
   return (
@@ -499,6 +549,14 @@ function LayoutRail({
       </button>
       <button className="iconButton" type="button" onClick={onSettingsClick} title="Options">
         <Settings size={19} />
+      </button>
+      <button
+        className={`iconButton ${favoriteOnly ? "active" : ""}`}
+        type="button"
+        onClick={onFavoriteFilterToggle}
+        title={favoriteOnly ? "Show all games" : "Show favorites only"}
+      >
+        <Star size={19} />
       </button>
       <ShellLayoutButton mode={shellLayout} onClick={onShellLayoutChange} />
     </nav>

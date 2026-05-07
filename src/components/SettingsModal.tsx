@@ -10,6 +10,7 @@ type SettingsModalProps = {
   onSave: (gamesDir: string, browserSettings: BrowserSettings) => Promise<void>;
   onExportMetadata: () => Promise<void>;
   onImportMetadata: (file: File) => Promise<void>;
+  onClearFavorites: () => Promise<void>;
   onClearBrowserStorage: () => Promise<void>;
 };
 
@@ -21,6 +22,7 @@ export function SettingsModal({
   onSave,
   onExportMetadata,
   onImportMetadata,
+  onClearFavorites,
   onClearBrowserStorage
 }: SettingsModalProps) {
   const metadataInputRef = useRef<HTMLInputElement | null>(null);
@@ -120,6 +122,10 @@ export function SettingsModal({
             <button className="dangerAction" type="button" onClick={handleClearStorage} disabled={busy}>
               <Trash2 size={17} />
               Clear cache
+            </button>
+            <button className="dangerAction" type="button" onClick={onClearFavorites} disabled={busy}>
+              <Trash2 size={17} />
+              Clear favorites
             </button>
           </div>
         </div>

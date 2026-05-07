@@ -109,6 +109,29 @@ app.post("/api/metadata/import", metadataUpload.single("metadata"), async (req, 
   }
 });
 
+app.post("/api/favorites/clear", async (_req, res, next) => {
+  try {
+    const library = await loadLibrary();
+
+    library.games = Object.fromEntries(
+      Object.entries(library.games || {}).map(([id, metadata]) => [
+        id,
+        normalizeMetadata({
+          ...metadata,
+          favorite: false
+        })
+      ])
+    );
+
+    await saveLibrary(library);
+    const games = await scanGames(library);
+    await saveLibrary(library);
+    res.json({ games });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/games", async (_req, res, next) => {
   try {
     const library = await loadLibrary();
@@ -237,6 +260,27 @@ app.post("/api/games/:id/play", async (req, res, next) => {
     metadata.timesPlayed = Number(metadata.timesPlayed || 0) + 1;
     metadata.lastPlayedAt = new Date().toISOString();
     library.games[id] = normalizeMetadata(metadata);
+
+    await saveLibrary(library);
+    const [game] = await scanGames(library, [id]);
+    res.json({ game });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/games/:id/favorite", async (req, res, next) => {
+  try {
+    const id = decodeGameId(req.params.id);
+    const gamePath = resolveGamePath(id);
+    const stat = await fileStat(gamePath);
+    const library = await loadLibrary();
+    const existing = library.games[id] || createDefaultMetadata(id, stat);
+
+    library.games[id] = normalizeMetadata({
+      ...existing,
+      favorite: Boolean(req.body?.favorite)
+    });
 
     await saveLibrary(library);
     const [game] = await scanGames(library, [id]);
@@ -522,6 +566,7 @@ function createDefaultMetadata(id, stat) {
     description: "",
     notes: "",
     tags: [],
+    favorite: false,
     dateAdded: stat.birthtime?.toISOString?.() || new Date().toISOString(),
     timesPlayed: 0,
     lastPlayedAt: null,
@@ -541,6 +586,7 @@ function normalizeMetadata(metadata = {}) {
     description: stringOrEmpty(metadata.description),
     notes: stringOrEmpty(metadata.notes),
     tags: normalizeTags(metadata.tags),
+    favorite: metadata.favorite === true,
     dateAdded: normalizeDate(metadata.dateAdded),
     timesPlayed: Number.isFinite(Number(metadata.timesPlayed)) ? Number(metadata.timesPlayed) : 0,
     lastPlayedAt: metadata.lastPlayedAt || null,

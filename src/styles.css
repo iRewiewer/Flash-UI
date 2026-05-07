@@ -160,7 +160,7 @@ h2 {
 .segmented {
   height: 44px;
   display: grid;
-  grid-template-columns: repeat(2, 42px);
+  grid-template-columns: repeat(3, 42px);
   border: 1px solid rgba(245, 241, 232, 0.13);
   background: #181a1c;
 }
@@ -175,6 +175,7 @@ h2 {
 }
 
 .segmented button.active,
+.iconButton.active,
 .iconButton.primary,
 .primaryAction {
   color: #101114;
@@ -334,10 +335,15 @@ h2 {
   gap: 7px;
 }
 
-.inlineEdit {
+.inlineActions {
   position: absolute;
   right: 7px;
   top: 7px;
+  display: flex;
+  gap: 6px;
+}
+
+.inlineAction {
   width: 30px;
   height: 30px;
   display: grid;
@@ -345,6 +351,10 @@ h2 {
   border-radius: 8px;
   color: rgba(245, 241, 232, 0.7);
   background: rgba(16, 17, 20, 0.74);
+}
+
+.inlineAction.favorite {
+  color: #f6c85f;
 }
 
 .playerPanel {
