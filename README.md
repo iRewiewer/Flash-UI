@@ -68,7 +68,7 @@ config/
 
 The server creates missing storage files/directories at startup. SWF files can be placed in `games/` manually or uploaded from the website.
 
-The options modal stores absolute paths for the games folder and settings JSON. Missing folders and settings files are created automatically. In Docker, those paths are interpreted inside the container. To keep games or config on another drive, mount that drive into the container in `docker-compose.yml`, then set the path to the mounted container path.
+The options modal stores container-absolute paths for the games folder and settings JSON, such as `/data/games`. Missing folders and settings files are created automatically. In Docker, those paths are interpreted inside the container. To keep games or config on another drive, mount that drive into the container in `docker-compose.yml`, then set the path to the mounted container path.
 
 ## Metadata
 

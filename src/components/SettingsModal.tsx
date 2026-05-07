@@ -80,7 +80,7 @@ export function SettingsModal({
 
         <div className="formGrid">
           <label className="wide">
-            <span>Games folder path (absolute)</span>
+            <span>Games folder path (container absolute)</span>
             <input
               value={gamesDir}
               onChange={(event) => setGamesDir(event.target.value)}
@@ -89,7 +89,7 @@ export function SettingsModal({
             />
           </label>
           <label className="wide">
-            <span>Settings file path (absolute)</span>
+            <span>Settings file path (container absolute)</span>
             <input
               value={settingsPath}
               onChange={(event) => setSettingsPath(event.target.value)}
@@ -97,7 +97,10 @@ export function SettingsModal({
               required
             />
           </label>
-          <p className="settingsHint">Missing folders and settings files are created automatically.</p>
+          <p className="settingsHint">
+            Docker paths are inside the container. Mount host folders in compose, then point these fields at the mounted path.
+            Missing folders and settings files are created automatically.
+          </p>
           <label className="wide">
             <span>Default player volume</span>
             <div className="settingsSlider">
