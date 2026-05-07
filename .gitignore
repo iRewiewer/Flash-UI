@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+npm-debug.log*
+*.tsbuildinfo
+.dev-server.*
+.server-test.*
+games/**/*.swf
+games/**/*.SWF
+games/thumbnails/*
+!games/thumbnails/.gitkeep

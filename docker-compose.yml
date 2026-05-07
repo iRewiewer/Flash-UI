@@ -1,0 +1,11 @@
+services:
+  flash-ui:
+    build: .
+    container_name: flash-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      GAMES_DIR: /data/games
+    volumes:
+      - ./games:/data/games

@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.env
+npm-debug.log*
+games/**/*.swf
+games/**/*.SWF
+games/thumbnails/*
+games/.incoming
