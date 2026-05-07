@@ -13,27 +13,28 @@ const require = createRequire(import.meta.url);
 
 const app = express();
 const port = Number(process.env.PORT || 8020);
-const gamesDir = path.resolve(process.env.GAMES_DIR || path.join(process.cwd(), "games"));
-const metadataPath = path.join(gamesDir, "metadata.json");
-const thumbnailsDir = path.join(gamesDir, "thumbnails");
-const incomingDir = path.join(gamesDir, ".incoming");
+const defaultGamesDir = path.resolve(process.env.GAMES_DIR || path.join(process.cwd(), "games"));
+const settingsPath = path.resolve(process.env.CONFIG_PATH || path.join(process.cwd(), "config", "settings.json"));
 const clientDir = path.resolve(__dirname, "..", "dist");
 
 app.use(express.json({ limit: "1mb" }));
 
 const upload = multer({
-  dest: incomingDir,
+  storage: createUploadStorage(),
   limits: {
     fileSize: 200 * 1024 * 1024
   }
 });
 
 const thumbnailUpload = multer({
-  dest: incomingDir,
+  storage: createUploadStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024
   }
 });
+
+let settings = await loadSettings();
+let gamesDir = settings.gamesDir;
 
 await ensureStorage();
 
@@ -47,6 +48,23 @@ app.use("/ruffle", express.static(resolveRuffleDir(), {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+app.get("/api/settings", (_req, res) => {
+  res.json({ settings: toSettingsResponse() });
+});
+
+app.put("/api/settings", async (req, res, next) => {
+  try {
+    const nextSettings = normalizeSettings(req.body);
+    settings = nextSettings;
+    gamesDir = nextSettings.gamesDir;
+    await saveSettings(nextSettings);
+    await ensureStorage();
+    res.json({ settings: toSettingsResponse() });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/api/games", async (_req, res, next) => {
@@ -266,16 +284,86 @@ app.use((error, _req, res, _next) => {
 app.listen(port, "0.0.0.0", () => {
   console.log(`Flash UI listening on http://0.0.0.0:${port}`);
   console.log(`Games directory: ${gamesDir}`);
+  console.log(`Settings path: ${settingsPath}`);
 });
 
 async function ensureStorage() {
   await fs.mkdir(gamesDir, { recursive: true });
-  await fs.mkdir(thumbnailsDir, { recursive: true });
-  await fs.mkdir(incomingDir, { recursive: true });
+  await fs.mkdir(thumbnailsDir(), { recursive: true });
+  await fs.mkdir(incomingDir(), { recursive: true });
 
-  if (!fsSync.existsSync(metadataPath)) {
+  if (!fsSync.existsSync(metadataPath())) {
     await saveLibrary({ games: {} });
   }
+}
+
+function createUploadStorage() {
+  return multer.diskStorage({
+    destination(_req, _file, callback) {
+      ensureStorage()
+        .then(() => callback(null, incomingDir()))
+        .catch((error) => callback(error, incomingDir()));
+    },
+    filename(_req, file, callback) {
+      const extension = path.extname(file.originalname).toLowerCase();
+      callback(null, `${crypto.randomUUID()}${extension}`);
+    }
+  });
+}
+
+async function loadSettings() {
+  try {
+    const raw = await fs.readFile(settingsPath, "utf8");
+    return normalizeSettings(JSON.parse(raw));
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
+
+    const initialSettings = normalizeSettings({});
+    await saveSettings(initialSettings);
+    return initialSettings;
+  }
+}
+
+async function saveSettings(nextSettings) {
+  await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+  const tempPath = `${settingsPath}.tmp`;
+  await fs.writeFile(tempPath, `${JSON.stringify(nextSettings, null, 2)}\n`, "utf8");
+  await fs.rename(tempPath, settingsPath);
+}
+
+function normalizeSettings(value = {}) {
+  const rawGamesDir = typeof value.gamesDir === "string" ? value.gamesDir.trim() : defaultGamesDir;
+
+  if (!rawGamesDir) {
+    const error = new Error("Games folder path is required.");
+    error.status = 400;
+    throw error;
+  }
+
+  return {
+    gamesDir: path.resolve(rawGamesDir)
+  };
+}
+
+function toSettingsResponse() {
+  return {
+    gamesDir,
+    settingsPath
+  };
+}
+
+function metadataPath() {
+  return path.join(gamesDir, "metadata.json");
+}
+
+function thumbnailsDir() {
+  return path.join(gamesDir, "thumbnails");
+}
+
+function incomingDir() {
+  return path.join(gamesDir, ".incoming");
 }
 
 function resolveRuffleDir() {
@@ -285,7 +373,7 @@ function resolveRuffleDir() {
 
 async function loadLibrary() {
   try {
-    const raw = await fs.readFile(metadataPath, "utf8");
+    const raw = await fs.readFile(metadataPath(), "utf8");
     const parsed = JSON.parse(raw);
     return {
       games: typeof parsed.games === "object" && parsed.games ? parsed.games : {}
@@ -305,9 +393,9 @@ async function saveLibrary(library) {
     )
   };
 
-  const tempPath = `${metadataPath}.tmp`;
+  const tempPath = `${metadataPath()}.tmp`;
   await fs.writeFile(tempPath, `${JSON.stringify(cleanLibrary, null, 2)}\n`, "utf8");
-  await fs.rename(tempPath, metadataPath);
+  await fs.rename(tempPath, metadataPath());
 }
 
 async function scanGames(library, onlyIds = null) {
@@ -496,7 +584,7 @@ async function persistThumbnail(id, file) {
   const extension = path.extname(file.originalname).toLowerCase();
   const hash = crypto.createHash("sha1").update(id).digest("hex").slice(0, 16);
   const fileName = `${hash}${extension}`;
-  const destination = path.join(thumbnailsDir, fileName);
+  const destination = path.join(thumbnailsDir(), fileName);
   await removeFileIfExists(destination);
   await fs.rename(file.path, destination);
   return fileName;
@@ -564,8 +652,8 @@ function resolveGamePath(id) {
 }
 
 function resolveThumbnailPath(fileName) {
-  const resolved = path.resolve(thumbnailsDir, fileName);
-  if (!isInside(thumbnailsDir, resolved)) {
+  const resolved = path.resolve(thumbnailsDir(), fileName);
+  if (!isInside(thumbnailsDir(), resolved)) {
     const error = new Error("Invalid thumbnail path.");
     error.status = 400;
     throw error;

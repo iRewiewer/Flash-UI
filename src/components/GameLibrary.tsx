@@ -5,6 +5,7 @@ import {
   List,
   Pencil,
   Search,
+  Settings,
   Tags
 } from "lucide-react";
 import type { Game, LayoutMode, ShellLayoutMode } from "../types";
@@ -22,6 +23,7 @@ type GameLibraryProps = {
   onSelect: (game: Game) => void;
   onEdit: (game: Game) => void;
   onUploadClick: () => void;
+  onSettingsClick: () => void;
 };
 
 export function GameLibrary({
@@ -35,7 +37,8 @@ export function GameLibrary({
   onShellLayoutChange,
   onSelect,
   onEdit,
-  onUploadClick
+  onUploadClick,
+  onSettingsClick
 }: GameLibraryProps) {
   return (
     <aside className="library">
@@ -47,6 +50,9 @@ export function GameLibrary({
         <div className="headerActions">
           <button className="iconButton primary" type="button" onClick={onUploadClick} title="Upload SWF">
             <FileUp size={19} />
+          </button>
+          <button className="iconButton" type="button" onClick={onSettingsClick} title="Options">
+            <Settings size={19} />
           </button>
           <ShellLayoutButton mode={shellLayout} onClick={onShellLayoutChange} />
         </div>

@@ -631,6 +631,18 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.settingsModal {
+  max-width: 680px;
+}
+
+.settingsHint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: rgba(245, 241, 232, 0.56);
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
 .formError {
   margin: 14px 0 0;
   color: #ffb3a7;

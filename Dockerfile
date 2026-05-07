@@ -15,6 +15,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8020
 ENV GAMES_DIR=/data/games
+ENV CONFIG_PATH=/data/config/settings.json
 
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
@@ -23,6 +24,6 @@ COPY --from=build /app/dist ./dist
 COPY server ./server
 
 EXPOSE 8020
-VOLUME ["/data/games"]
+VOLUME ["/data/games", "/data/config"]
 
 CMD ["node", "server/index.js"]

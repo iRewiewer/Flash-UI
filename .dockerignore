@@ -3,6 +3,7 @@ dist
 .git
 .env
 npm-debug.log*
+config/settings.json
 games/**/*.swf
 games/**/*.SWF
 games/thumbnails/*

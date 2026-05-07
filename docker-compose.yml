@@ -7,5 +7,7 @@ services:
       - "8020:8020"
     environment:
       GAMES_DIR: /data/games
+      CONFIG_PATH: /data/config/settings.json
     volumes:
       - ./games:/data/games
+      - ./config:/data/config

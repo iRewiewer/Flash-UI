@@ -3,17 +3,20 @@ import {
   createFormState,
   deleteGame,
   fetchGames,
+  fetchSettings,
   updateGameMetadata,
+  updateSettings,
   updateGameThumbnail,
   uploadGame
 } from "./api";
-import { FileUp } from "lucide-react";
+import { FileUp, Settings } from "lucide-react";
 import { DropOverlay } from "./components/DropOverlay";
 import { GameLibrary } from "./components/GameLibrary";
 import { MetadataModal } from "./components/MetadataModal";
 import { PlayerPanel } from "./components/PlayerPanel";
+import { SettingsModal } from "./components/SettingsModal";
 import { ShellLayoutButton } from "./components/ShellLayoutButton";
-import type { Game, LayoutMode, MetadataFormState, ShellLayoutMode } from "./types";
+import type { AppSettings, Game, LayoutMode, MetadataFormState, ShellLayoutMode } from "./types";
 
 type ModalState =
   | {
@@ -41,12 +44,15 @@ export function App() {
     return saved === "compact" || saved === "library" || saved === "split" ? saved : "split";
   });
   const [modal, setModal] = useState<ModalState>(null);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     refreshGames();
+    refreshSettings();
   }, []);
 
   useEffect(() => {
@@ -97,6 +103,14 @@ export function App() {
       });
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load games.");
+    }
+  }
+
+  async function refreshSettings() {
+    try {
+      setSettings(await fetchSettings());
+    } catch (settingsError) {
+      setError(settingsError instanceof Error ? settingsError.message : "Could not load settings.");
     }
   }
 
@@ -197,6 +211,23 @@ export function App() {
     }
   }
 
+  async function saveSettings(gamesDir: string) {
+    setBusy(true);
+    setError(null);
+
+    try {
+      const nextSettings = await updateSettings(gamesDir);
+      setSettings(nextSettings);
+      setSettingsModalOpen(false);
+      setSelectedId(null);
+      await refreshGames();
+    } catch (settingsError) {
+      setError(settingsError instanceof Error ? settingsError.message : "Could not save settings.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function upsertGame(game: Game) {
     setGames((current) => {
       const existing = current.some((item) => item.id === game.id);
@@ -244,6 +275,7 @@ export function App() {
           shellLayout={shellLayout}
           onUploadClick={openUploadPicker}
           onShellLayoutChange={cycleShellLayout}
+          onSettingsClick={() => setSettingsModalOpen(true)}
         />
       )}
 
@@ -265,6 +297,7 @@ export function App() {
           }}
           onEdit={(game) => setModal({ type: "edit", game, initialValue: createFormState(game) })}
           onUploadClick={openUploadPicker}
+          onSettingsClick={() => setSettingsModalOpen(true)}
         />
       )}
 
@@ -298,6 +331,15 @@ export function App() {
         />
       )}
 
+      {settingsModalOpen && (
+        <SettingsModal
+          settings={settings}
+          busy={busy}
+          onCancel={() => setSettingsModalOpen(false)}
+          onSave={saveSettings}
+        />
+      )}
+
       <DropOverlay visible={isDragging} />
     </main>
   );
@@ -306,16 +348,21 @@ export function App() {
 function LayoutRail({
   shellLayout,
   onUploadClick,
-  onShellLayoutChange
+  onShellLayoutChange,
+  onSettingsClick
 }: {
   shellLayout: ShellLayoutMode;
   onUploadClick: () => void;
   onShellLayoutChange: () => void;
+  onSettingsClick: () => void;
 }) {
   return (
     <nav className="layoutRail" aria-label="Library controls">
       <button className="iconButton primary" type="button" onClick={onUploadClick} title="Upload SWF">
         <FileUp size={19} />
+      </button>
+      <button className="iconButton" type="button" onClick={onSettingsClick} title="Options">
+        <Settings size={19} />
       </button>
       <ShellLayoutButton mode={shellLayout} onClick={onShellLayoutChange} />
     </nav>

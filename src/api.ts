@@ -1,4 +1,4 @@
-import type { Game, MetadataFormState } from "./types";
+import type { AppSettings, Game, MetadataFormState } from "./types";
 
 type GamesResponse = {
   games: Game[];
@@ -12,10 +12,33 @@ type DeleteGameResponse = {
   deletedId: string;
 };
 
+type SettingsResponse = {
+  settings: AppSettings;
+};
+
 export async function fetchGames(): Promise<Game[]> {
   const response = await fetch("/api/games");
   const data = await parseResponse<GamesResponse>(response);
   return data.games;
+}
+
+export async function fetchSettings(): Promise<AppSettings> {
+  const response = await fetch("/api/settings");
+  const data = await parseResponse<SettingsResponse>(response);
+  return data.settings;
+}
+
+export async function updateSettings(gamesDir: string): Promise<AppSettings> {
+  const response = await fetch("/api/settings", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ gamesDir })
+  });
+
+  const data = await parseResponse<SettingsResponse>(response);
+  return data.settings;
 }
 
 export async function uploadGame(

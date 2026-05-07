@@ -5,6 +5,7 @@ npm-debug.log*
 *.tsbuildinfo
 .dev-server.*
 .server-test.*
+config/settings.json
 games/**/*.swf
 games/**/*.SWF
 games/thumbnails/*

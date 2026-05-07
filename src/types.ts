@@ -1,6 +1,11 @@
 export type LayoutMode = "grid" | "list";
 export type ShellLayoutMode = "compact" | "split" | "library";
 
+export type AppSettings = {
+  gamesDir: string;
+  settingsPath: string;
+};
+
 export type LaunchOptions = {
   parameters?: Record<string, string>;
   allowFullscreen?: boolean;
