@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createFormState,
   deleteGame,
+  exportMetadata,
   fetchGames,
   fetchSettings,
+  importMetadata,
   updateGameMetadata,
   updateSettings,
   updateGameThumbnail,
@@ -16,7 +18,7 @@ import { MetadataModal } from "./components/MetadataModal";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { SettingsModal } from "./components/SettingsModal";
 import { ShellLayoutButton } from "./components/ShellLayoutButton";
-import type { AppSettings, Game, LayoutMode, MetadataFormState, ShellLayoutMode } from "./types";
+import type { AppSettings, BrowserSettings, Game, LayoutMode, MetadataFormState, ShellLayoutMode } from "./types";
 
 type ModalState =
   | {
@@ -46,6 +48,11 @@ export function App() {
   const [modal, setModal] = useState<ModalState>(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [browserSettings, setBrowserSettings] = useState<BrowserSettings>(() => loadBrowserSettings());
+  const [volume, setVolume] = useState(() => {
+    const savedVolume = Number(localStorage.getItem("flash-ui-volume"));
+    return Number.isFinite(savedVolume) ? clampVolume(savedVolume) : loadBrowserSettings().defaultPlayerVolume;
+  });
   const [busy, setBusy] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +69,10 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("flash-ui-shell-layout", shellLayout);
   }, [shellLayout]);
+
+  useEffect(() => {
+    localStorage.setItem("flash-ui-volume", String(volume));
+  }, [volume]);
 
   const filteredGames = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -211,18 +222,70 @@ export function App() {
     }
   }
 
-  async function saveSettings(gamesDir: string) {
+  async function saveSettings(gamesDir: string, nextBrowserSettings: BrowserSettings) {
     setBusy(true);
     setError(null);
 
     try {
       const nextSettings = await updateSettings(gamesDir);
+      saveBrowserSettings(nextBrowserSettings);
       setSettings(nextSettings);
+      setBrowserSettings(nextBrowserSettings);
+      setVolume(nextBrowserSettings.defaultPlayerVolume);
       setSettingsModalOpen(false);
       setSelectedId(null);
       await refreshGames();
     } catch (settingsError) {
       setError(settingsError instanceof Error ? settingsError.message : "Could not save settings.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleExportMetadata() {
+    try {
+      const blob = await exportMetadata();
+      downloadBlob(blob, `flash-ui-metadata-${new Date().toISOString().slice(0, 10)}.json`);
+    } catch (metadataError) {
+      setError(metadataError instanceof Error ? metadataError.message : "Could not export metadata.");
+    }
+  }
+
+  async function handleImportMetadata(file: File) {
+    const confirmed = window.confirm("Import this metadata file and replace the current metadata JSON?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      const importedGames = await importMetadata(file);
+      setGames(importedGames);
+      setSelectedId(importedGames[0]?.id || null);
+    } catch (metadataError) {
+      setError(metadataError instanceof Error ? metadataError.message : "Could not import metadata.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleClearBrowserStorage() {
+    setBusy(true);
+    setError(null);
+
+    try {
+      await clearBrowserStorage();
+      const resetBrowserSettings = getDefaultBrowserSettings();
+      setBrowserSettings(resetBrowserSettings);
+      setLayout("grid");
+      setShellLayout("split");
+      setVolume(resetBrowserSettings.defaultPlayerVolume);
+      setSettingsModalOpen(false);
+    } catch (clearError) {
+      setError(clearError instanceof Error ? clearError.message : "Could not clear browser storage.");
     } finally {
       setBusy(false);
     }
@@ -304,6 +367,8 @@ export function App() {
       {shellLayout !== "library" && (
         <PlayerPanel
           game={selectedGame}
+          volume={volume}
+          onVolumeChange={setVolume}
           onGameUpdated={upsertGame}
           onEdit={(game) => setModal({ type: "edit", game, initialValue: createFormState(game) })}
         />
@@ -334,15 +399,86 @@ export function App() {
       {settingsModalOpen && (
         <SettingsModal
           settings={settings}
+          browserSettings={browserSettings}
           busy={busy}
           onCancel={() => setSettingsModalOpen(false)}
           onSave={saveSettings}
+          onExportMetadata={handleExportMetadata}
+          onImportMetadata={handleImportMetadata}
+          onClearBrowserStorage={handleClearBrowserStorage}
         />
       )}
 
       <DropOverlay visible={isDragging} />
     </main>
   );
+}
+
+function getDefaultBrowserSettings(): BrowserSettings {
+  return {
+    defaultPlayerVolume: 1
+  };
+}
+
+function loadBrowserSettings(): BrowserSettings {
+  const defaults = getDefaultBrowserSettings();
+  const defaultPlayerVolume = Number(localStorage.getItem("flash-ui-default-volume"));
+
+  return {
+    defaultPlayerVolume: Number.isFinite(defaultPlayerVolume)
+      ? clampVolume(defaultPlayerVolume)
+      : defaults.defaultPlayerVolume
+  };
+}
+
+function saveBrowserSettings(settings: BrowserSettings) {
+  localStorage.setItem("flash-ui-default-volume", String(clampVolume(settings.defaultPlayerVolume)));
+}
+
+function clampVolume(value: number) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+async function clearBrowserStorage() {
+  if ("caches" in window) {
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+  }
+
+  if ("indexedDB" in window && "databases" in indexedDB) {
+    const databases = await indexedDB.databases();
+    await Promise.all(
+      databases
+        .map((database) => database.name)
+        .filter((name): name is string => Boolean(name))
+        .map((name) => new Promise<void>((resolve, reject) => {
+          const request = indexedDB.deleteDatabase(name);
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error || new Error(`Could not delete ${name}`));
+          request.onblocked = () => resolve();
+        }))
+    );
+  }
+
+  document.cookie
+    .split(";")
+    .map((cookie) => cookie.split("=")[0]?.trim())
+    .filter(Boolean)
+    .forEach((name) => {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+    });
+
+  localStorage.clear();
+  sessionStorage.clear();
 }
 
 function LayoutRail({

@@ -33,6 +33,13 @@ const thumbnailUpload = multer({
   }
 });
 
+const metadataUpload = multer({
+  storage: createUploadStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  }
+});
+
 let settings = await loadSettings();
 let gamesDir = settings.gamesDir;
 
@@ -63,6 +70,41 @@ app.put("/api/settings", async (req, res, next) => {
     await ensureStorage();
     res.json({ settings: toSettingsResponse() });
   } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/metadata/export", async (_req, res, next) => {
+  try {
+    const library = await loadLibrary();
+    res.type("application/json");
+    res.setHeader("Content-Disposition", "attachment; filename=\"flash-ui-metadata.json\"");
+    res.send(`${JSON.stringify(library, null, 2)}\n`);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/metadata/import", metadataUpload.single("metadata"), async (req, res, next) => {
+  const metadataFile = req.file;
+
+  try {
+    if (!metadataFile) {
+      res.status(400).json({ error: "A metadata JSON file is required." });
+      return;
+    }
+
+    const raw = await fs.readFile(metadataFile.path, "utf8");
+    const importedLibrary = parseLibraryPayload(parseJsonPayload(raw, "Metadata import must be valid JSON."));
+    await saveLibrary(importedLibrary);
+    await removeTempFile(metadataFile);
+
+    const library = await loadLibrary();
+    const games = await scanGames(library);
+    await saveLibrary(library);
+    res.json({ games });
+  } catch (error) {
+    await removeTempFile(metadataFile);
     next(error);
   }
 });
@@ -396,6 +438,34 @@ async function saveLibrary(library) {
   const tempPath = `${metadataPath()}.tmp`;
   await fs.writeFile(tempPath, `${JSON.stringify(cleanLibrary, null, 2)}\n`, "utf8");
   await fs.rename(tempPath, metadataPath());
+}
+
+function parseLibraryPayload(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    const error = new Error("Metadata import must be a JSON object.");
+    error.status = 400;
+    throw error;
+  }
+
+  const rawGames = value.games && typeof value.games === "object" && !Array.isArray(value.games)
+    ? value.games
+    : value;
+
+  return {
+    games: Object.fromEntries(
+      Object.entries(rawGames).map(([id, metadata]) => [id, normalizeMetadata(metadata)])
+    )
+  };
+}
+
+function parseJsonPayload(raw, message) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const error = new Error(message);
+    error.status = 400;
+    throw error;
+  }
 }
 
 async function scanGames(library, onlyIds = null) {

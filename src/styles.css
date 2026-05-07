@@ -643,6 +643,49 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.settingsSlider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(245, 241, 232, 0.13);
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: #101114;
+}
+
+.settingsSlider input {
+  padding: 0;
+  border: 0;
+  accent-color: #f6c85f;
+}
+
+.settingsSlider strong {
+  color: rgba(245, 241, 232, 0.72);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.settingsButtonGroup {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settingsButtonGroup button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 8px;
+  padding: 0 13px;
+  color: #f5f1e8;
+  background: #25282b;
+  cursor: pointer;
+}
+
 .formError {
   margin: 14px 0 0;
   color: #ffb3a7;
@@ -802,11 +845,13 @@ h2 {
   }
 
   .modalActions > div,
-  .modalActions button {
+  .modalActions button,
+  .settingsButtonGroup button {
     width: 100%;
   }
 
-  .modalActions button {
+  .modalActions button,
+  .settingsButtonGroup button {
     justify-content: center;
   }
 }

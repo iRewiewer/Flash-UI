@@ -110,6 +110,30 @@ export async function deleteGame(gameId: string): Promise<string> {
   return data.deletedId;
 }
 
+export async function exportMetadata(): Promise<Blob> {
+  const response = await fetch("/api/metadata/export");
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Request failed with ${response.status}`);
+  }
+
+  return response.blob();
+}
+
+export async function importMetadata(file: File): Promise<Game[]> {
+  const form = new FormData();
+  form.set("metadata", file);
+
+  const response = await fetch("/api/metadata/import", {
+    method: "POST",
+    body: form
+  });
+
+  const data = await parseResponse<GamesResponse>(response);
+  return data.games;
+}
+
 export function createFormState(game?: Game, swf?: File): MetadataFormState {
   const now = new Date().toISOString();
   const inferredName = swf ? swf.name.replace(/\.swf$/i, "") : "";

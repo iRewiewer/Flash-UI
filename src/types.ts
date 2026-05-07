@@ -6,6 +6,10 @@ export type AppSettings = {
   settingsPath: string;
 };
 
+export type BrowserSettings = {
+  defaultPlayerVolume: number;
+};
+
 export type LaunchOptions = {
   parameters?: Record<string, string>;
   allowFullscreen?: boolean;

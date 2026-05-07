@@ -12,6 +12,7 @@ Private Flash game library for a Raspberry Pi or any Docker host. The app scans 
 - Delete action that removes both the library entry and the SWF file from disk
 - Three shell layouts: compact player rail, split library/player, and full-library browsing
 - Options modal for changing the games folder path used by the app
+- Options for default player volume, metadata import/export, and browser storage cleanup
 - JSON metadata stored at `games/metadata.json`
 - Docker setup using a bind mount for persistent game files
 

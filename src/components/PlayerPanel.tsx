@@ -6,6 +6,8 @@ import { GameThumb } from "./GameLibrary";
 
 type PlayerPanelProps = {
   game: Game | null;
+  volume: number;
+  onVolumeChange: (volume: number) => void;
   onGameUpdated: (game: Game) => void;
   onEdit: (game: Game) => void;
 };
@@ -34,20 +36,15 @@ declare global {
 
 let ruffleScriptPromise: Promise<void> | null = null;
 
-export function PlayerPanel({ game, onGameUpdated, onEdit }: PlayerPanelProps) {
+export function PlayerPanel({ game, volume, onVolumeChange, onGameUpdated, onEdit }: PlayerPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<RuffleElement | null>(null);
   const lastRecordedGameIdRef = useRef<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [volume, setVolume] = useState(() => {
-    const saved = Number(localStorage.getItem("flash-ui-volume"));
-    return Number.isFinite(saved) ? clampVolume(saved) : 1;
-  });
   const launchOptionsKey = game ? JSON.stringify(game.launchOptions) : "";
 
   useEffect(() => {
-    localStorage.setItem("flash-ui-volume", String(volume));
     const player = playerRef.current?.ruffle();
 
     if (player) {
@@ -154,7 +151,7 @@ export function PlayerPanel({ game, onGameUpdated, onEdit }: PlayerPanelProps) {
                   max="1"
                   step="0.05"
                   value={volume}
-                  onChange={(event) => setVolume(clampVolume(Number(event.target.value)))}
+                  onChange={(event) => onVolumeChange(clampVolume(Number(event.target.value)))}
                 />
                 <span>{Math.round(volume * 100)}</span>
               </label>
