@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
 const app = express();
-const port = Number(process.env.PORT || 8080);
+const port = Number(process.env.PORT || 8020);
 const gamesDir = path.resolve(process.env.GAMES_DIR || path.join(process.cwd(), "games"));
 const metadataPath = path.join(gamesDir, "metadata.json");
 const thumbnailsDir = path.join(gamesDir, "thumbnails");
@@ -186,12 +186,40 @@ app.post("/api/games/:id/play", async (req, res, next) => {
   }
 });
 
+app.delete("/api/games/:id", async (req, res, next) => {
+  try {
+    const id = decodeGameId(req.params.id);
+    const gamePath = resolveGamePath(id);
+    await fileStat(gamePath);
+
+    const library = await loadLibrary();
+    const thumbnail = library.games[id]?.thumbnail;
+
+    await removeFileIfExists(gamePath);
+
+    if (thumbnail) {
+      await removeThumbnail(thumbnail);
+    }
+
+    delete library.games[id];
+    await saveLibrary(library);
+    res.json({ deletedId: id });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/games/:id/swf", async (req, res, next) => {
   try {
     const id = decodeGameId(req.params.id);
     const gamePath = resolveGamePath(id);
     await fileStat(gamePath);
+    const library = await loadLibrary();
+    const metadataName = library.games[id]?.name;
+    const downloadName = sanitizeDownloadName(metadataName || path.basename(id));
     res.type("application/x-shockwave-flash");
+    const disposition = req.query.download === "1" ? "attachment" : "inline";
+    res.setHeader("Content-Disposition", `${disposition}; filename="${downloadName}"`);
     res.sendFile(gamePath);
   } catch (error) {
     next(error);
@@ -558,6 +586,16 @@ function sanitizeFileName(fileName) {
   const extension = path.extname(fileName).toLowerCase();
   const base = baseNameWithoutExtension(fileName)
     .replace(/[^a-z0-9._-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120) || "game";
+
+  return `${base}${extension}`;
+}
+
+function sanitizeDownloadName(value) {
+  const extension = path.extname(value).toLowerCase() === ".swf" ? "" : ".swf";
+  const base = baseNameWithoutExtension(value)
+    .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 120) || "game";
 

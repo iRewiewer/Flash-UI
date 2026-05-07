@@ -9,6 +9,8 @@ Private Flash game library for a Raspberry Pi or any Docker host. The app scans 
 - Automatic SWF discovery from `games/`
 - Browser upload for SWF files and thumbnails
 - Metadata editor for name, description, notes, tags, date added, play count, version, thumbnail, and Ruffle launch options
+- Delete action that removes both the library entry and the SWF file from disk
+- Three shell layouts: compact player rail, split library/player, and full-library browsing
 - JSON metadata stored at `games/metadata.json`
 - Docker setup using a bind mount for persistent game files
 

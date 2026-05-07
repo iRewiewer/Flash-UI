@@ -1,4 +1,4 @@
-import { ImagePlus, Save, Upload, X } from "lucide-react";
+import { ImagePlus, Save, Trash2, Upload, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { validateLaunchOptions } from "../api";
 import type { Game, MetadataFormState } from "../types";
@@ -11,6 +11,7 @@ type MetadataModalProps = {
   busy: boolean;
   onCancel: () => void;
   onSave: (metadata: MetadataFormState, thumbnail: File | null) => Promise<void>;
+  onDelete?: (game: Game) => Promise<void>;
 };
 
 export function MetadataModal({
@@ -20,7 +21,8 @@ export function MetadataModal({
   initialValue,
   busy,
   onCancel,
-  onSave
+  onSave,
+  onDelete
 }: MetadataModalProps) {
   const [metadata, setMetadata] = useState(initialValue);
   const [thumbnail, setThumbnail] = useState<File | null>(null);
@@ -141,13 +143,23 @@ export function MetadataModal({
         )}
 
         <div className="modalActions">
-          <button type="button" onClick={onCancel} disabled={busy}>
-            Cancel
-          </button>
-          <button className="primaryAction" type="submit" disabled={busy || Boolean(launchOptionsError)}>
-            {mode === "upload" ? <Upload size={17} /> : <Save size={17} />}
-            {busy ? "Saving" : mode === "upload" ? "Upload" : "Save"}
-          </button>
+          <div>
+            {mode === "edit" && game && onDelete && (
+              <button className="dangerAction" type="button" onClick={() => onDelete(game)} disabled={busy}>
+                <Trash2 size={17} />
+                Delete
+              </button>
+            )}
+          </div>
+          <div>
+            <button type="button" onClick={onCancel} disabled={busy}>
+              Cancel
+            </button>
+            <button className="primaryAction" type="submit" disabled={busy || Boolean(launchOptionsError)}>
+              {mode === "upload" ? <Upload size={17} /> : <Save size={17} />}
+              {busy ? "Saving" : mode === "upload" ? "Upload" : "Save"}
+            </button>
+          </div>
         </div>
       </form>
     </div>

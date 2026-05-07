@@ -135,7 +135,11 @@ export function PlayerPanel({ game, onGameUpdated, onEdit }: PlayerPanelProps) {
                 <Pencil size={17} />
                 Edit
               </button>
-              <a href={game.swfUrl} target="_blank" rel="noreferrer" title="Open SWF">
+              <a
+                href={`${game.swfUrl}?download=1`}
+                download={game.fileName}
+                title="Download SWF"
+              >
                 <ExternalLink size={17} />
                 SWF
               </a>

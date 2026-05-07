@@ -7,15 +7,18 @@ import {
   Search,
   Tags
 } from "lucide-react";
-import type { Game, LayoutMode } from "../types";
+import type { Game, LayoutMode, ShellLayoutMode } from "../types";
+import { ShellLayoutButton } from "./ShellLayoutButton";
 
 type GameLibraryProps = {
   games: Game[];
   selectedId: string | null;
   layout: LayoutMode;
+  shellLayout: ShellLayoutMode;
   query: string;
   onQueryChange: (query: string) => void;
   onLayoutChange: (layout: LayoutMode) => void;
+  onShellLayoutChange: () => void;
   onSelect: (game: Game) => void;
   onEdit: (game: Game) => void;
   onUploadClick: () => void;
@@ -25,9 +28,11 @@ export function GameLibrary({
   games,
   selectedId,
   layout,
+  shellLayout,
   query,
   onQueryChange,
   onLayoutChange,
+  onShellLayoutChange,
   onSelect,
   onEdit,
   onUploadClick
@@ -39,9 +44,12 @@ export function GameLibrary({
           <p className="eyebrow">Library</p>
           <h1>Flash UI</h1>
         </div>
-        <button className="iconButton primary" type="button" onClick={onUploadClick} title="Upload SWF">
-          <FileUp size={19} />
-        </button>
+        <div className="headerActions">
+          <button className="iconButton primary" type="button" onClick={onUploadClick} title="Upload SWF">
+            <FileUp size={19} />
+          </button>
+          <ShellLayoutButton mode={shellLayout} onClick={onShellLayoutChange} />
+        </div>
       </div>
 
       <div className="toolbar">

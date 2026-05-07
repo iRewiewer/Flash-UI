@@ -8,6 +8,10 @@ type GameResponse = {
   game: Game;
 };
 
+type DeleteGameResponse = {
+  deletedId: string;
+};
+
 export async function fetchGames(): Promise<Game[]> {
   const response = await fetch("/api/games");
   const data = await parseResponse<GamesResponse>(response);
@@ -72,6 +76,15 @@ export async function recordGamePlay(gameId: string): Promise<Game> {
 
   const data = await parseResponse<GameResponse>(response);
   return data.game;
+}
+
+export async function deleteGame(gameId: string): Promise<string> {
+  const response = await fetch(`/api/games/${encodeURIComponent(gameId)}`, {
+    method: "DELETE"
+  });
+
+  const data = await parseResponse<DeleteGameResponse>(response);
+  return data.deletedId;
 }
 
 export function createFormState(game?: Game, swf?: File): MetadataFormState {

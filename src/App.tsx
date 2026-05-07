@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createFormState,
+  deleteGame,
   fetchGames,
   updateGameMetadata,
   updateGameThumbnail,
   uploadGame
 } from "./api";
+import { FileUp } from "lucide-react";
 import { DropOverlay } from "./components/DropOverlay";
 import { GameLibrary } from "./components/GameLibrary";
 import { MetadataModal } from "./components/MetadataModal";
 import { PlayerPanel } from "./components/PlayerPanel";
-import type { Game, LayoutMode, MetadataFormState } from "./types";
+import { ShellLayoutButton } from "./components/ShellLayoutButton";
+import type { Game, LayoutMode, MetadataFormState, ShellLayoutMode } from "./types";
 
 type ModalState =
   | {
@@ -33,6 +36,10 @@ export function App() {
   const [layout, setLayout] = useState<LayoutMode>(() => {
     return localStorage.getItem("flash-ui-layout") === "list" ? "list" : "grid";
   });
+  const [shellLayout, setShellLayout] = useState<ShellLayoutMode>(() => {
+    const saved = localStorage.getItem("flash-ui-shell-layout");
+    return saved === "compact" || saved === "library" || saved === "split" ? saved : "split";
+  });
   const [modal, setModal] = useState<ModalState>(null);
   const [busy, setBusy] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -45,6 +52,10 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("flash-ui-layout", layout);
   }, [layout]);
+
+  useEffect(() => {
+    localStorage.setItem("flash-ui-shell-layout", shellLayout);
+  }, [shellLayout]);
 
   const filteredGames = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -91,6 +102,20 @@ export function App() {
 
   function openUploadPicker() {
     fileInputRef.current?.click();
+  }
+
+  function cycleShellLayout() {
+    setShellLayout((current) => {
+      if (current === "compact") {
+        return "split";
+      }
+
+      if (current === "split") {
+        return "library";
+      }
+
+      return "compact";
+    });
   }
 
   function stageUpload(file: File | null | undefined) {
@@ -141,6 +166,37 @@ export function App() {
     }
   }
 
+  async function deleteSelectedGame(game: Game) {
+    const confirmed = window.confirm(
+      `Delete "${game.name || game.fileName}" from the library and remove the SWF from disk?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      const deletedId = await deleteGame(game.id);
+      const remainingGames = games.filter((item) => item.id !== deletedId);
+      setGames(remainingGames);
+      setSelectedId((currentSelectedId) => {
+        if (currentSelectedId !== deletedId) {
+          return currentSelectedId;
+        }
+
+        return remainingGames[0]?.id || null;
+      });
+      setModal(null);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Could not delete game.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function upsertGame(game: Game) {
     setGames((current) => {
       const existing = current.some((item) => item.id === game.id);
@@ -160,7 +216,7 @@ export function App() {
 
   return (
     <main
-      className="appShell"
+      className={`appShell shell-${shellLayout}`}
       onDragOver={(event) => {
         event.preventDefault();
         setIsDragging(true);
@@ -183,23 +239,42 @@ export function App() {
         }}
       />
 
-      <GameLibrary
-        games={filteredGames}
-        selectedId={selectedId}
-        layout={layout}
-        query={query}
-        onQueryChange={setQuery}
-        onLayoutChange={setLayout}
-        onSelect={(game) => setSelectedId(game.id)}
-        onEdit={(game) => setModal({ type: "edit", game, initialValue: createFormState(game) })}
-        onUploadClick={openUploadPicker}
-      />
+      {shellLayout === "compact" && (
+        <LayoutRail
+          shellLayout={shellLayout}
+          onUploadClick={openUploadPicker}
+          onShellLayoutChange={cycleShellLayout}
+        />
+      )}
 
-      <PlayerPanel
-        game={selectedGame}
-        onGameUpdated={upsertGame}
-        onEdit={(game) => setModal({ type: "edit", game, initialValue: createFormState(game) })}
-      />
+      {shellLayout !== "compact" && (
+        <GameLibrary
+          games={filteredGames}
+          selectedId={selectedId}
+          layout={layout}
+          shellLayout={shellLayout}
+          query={query}
+          onQueryChange={setQuery}
+          onLayoutChange={setLayout}
+          onShellLayoutChange={cycleShellLayout}
+          onSelect={(game) => {
+            setSelectedId(game.id);
+            if (shellLayout === "library") {
+              setShellLayout("compact");
+            }
+          }}
+          onEdit={(game) => setModal({ type: "edit", game, initialValue: createFormState(game) })}
+          onUploadClick={openUploadPicker}
+        />
+      )}
+
+      {shellLayout !== "library" && (
+        <PlayerPanel
+          game={selectedGame}
+          onGameUpdated={upsertGame}
+          onEdit={(game) => setModal({ type: "edit", game, initialValue: createFormState(game) })}
+        />
+      )}
 
       {error && (
         <div className="toast" role="alert">
@@ -219,10 +294,30 @@ export function App() {
           busy={busy}
           onCancel={() => setModal(null)}
           onSave={saveModal}
+          onDelete={deleteSelectedGame}
         />
       )}
 
       <DropOverlay visible={isDragging} />
     </main>
+  );
+}
+
+function LayoutRail({
+  shellLayout,
+  onUploadClick,
+  onShellLayoutChange
+}: {
+  shellLayout: ShellLayoutMode;
+  onUploadClick: () => void;
+  onShellLayoutChange: () => void;
+}) {
+  return (
+    <nav className="layoutRail" aria-label="Library controls">
+      <button className="iconButton primary" type="button" onClick={onUploadClick} title="Upload SWF">
+        <FileUp size={19} />
+      </button>
+      <ShellLayoutButton mode={shellLayout} onClick={onShellLayoutChange} />
+    </nav>
   );
 }

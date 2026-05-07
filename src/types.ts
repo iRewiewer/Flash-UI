@@ -1,4 +1,5 @@
 export type LayoutMode = "grid" | "list";
+export type ShellLayoutMode = "compact" | "split" | "library";
 
 export type LaunchOptions = {
   parameters?: Record<string, string>;

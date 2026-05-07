@@ -13,7 +13,7 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=8080
+ENV PORT=8020
 ENV GAMES_DIR=/data/games
 
 COPY package*.json ./
@@ -22,7 +22,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY server ./server
 
-EXPOSE 8080
+EXPOSE 8020
 VOLUME ["/data/games"]
 
 CMD ["node", "server/index.js"]
