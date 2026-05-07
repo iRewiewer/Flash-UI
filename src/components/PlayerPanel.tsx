@@ -1,4 +1,4 @@
-import { ExternalLink, Maximize2, Pencil, RotateCw } from "lucide-react";
+import { ExternalLink, Maximize2, Pencil, RotateCw, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { recordGamePlay } from "../api";
 import type { Game } from "../types";
@@ -14,6 +14,7 @@ type RufflePlayerApi = {
   load: (options: Record<string, unknown> | string) => Promise<void>;
   requestFullscreen: () => void;
   fullscreenEnabled: boolean;
+  volume: number;
 };
 
 type RuffleElement = HTMLElement & {
@@ -39,7 +40,20 @@ export function PlayerPanel({ game, onGameUpdated, onEdit }: PlayerPanelProps) {
   const lastRecordedGameIdRef = useRef<string | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [volume, setVolume] = useState(() => {
+    const saved = Number(localStorage.getItem("flash-ui-volume"));
+    return Number.isFinite(saved) ? clampVolume(saved) : 1;
+  });
   const launchOptionsKey = game ? JSON.stringify(game.launchOptions) : "";
+
+  useEffect(() => {
+    localStorage.setItem("flash-ui-volume", String(volume));
+    const player = playerRef.current?.ruffle();
+
+    if (player) {
+      player.volume = volume;
+    }
+  }, [volume]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +85,7 @@ export function PlayerPanel({ game, onGameUpdated, onEdit }: PlayerPanelProps) {
         player.className = "rufflePlayer";
         containerRef.current.appendChild(player);
         playerRef.current = player;
+        player.ruffle().volume = volume;
 
         await player.ruffle().load({
           ...game.launchOptions,
@@ -131,6 +146,18 @@ export function PlayerPanel({ game, onGameUpdated, onEdit }: PlayerPanelProps) {
               </div>
             </div>
             <div className="playerActions">
+              <label className="volumeControl" title="Volume">
+                <Volume2 size={17} />
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={volume}
+                  onChange={(event) => setVolume(clampVolume(Number(event.target.value)))}
+                />
+                <span>{Math.round(volume * 100)}</span>
+              </label>
               <button type="button" onClick={() => onEdit(game)} title="Edit metadata">
                 <Pencil size={17} />
                 Edit
@@ -202,6 +229,10 @@ export function PlayerPanel({ game, onGameUpdated, onEdit }: PlayerPanelProps) {
       )}
     </section>
   );
+}
+
+function clampVolume(value: number) {
+  return Math.min(1, Math.max(0, value));
 }
 
 function loadRuffleScript() {
