@@ -1,13 +1,12 @@
 import { Download, RotateCw, Save, Trash2, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
-import type { AppSettings, BrowserSettings } from "../types";
+import type { AppSettings } from "../types";
 
 type SettingsModalProps = {
   settings: AppSettings | null;
-  browserSettings: BrowserSettings;
   busy: boolean;
   onCancel: () => void;
-  onSave: (gamesDir: string, settingsPath: string, browserSettings: BrowserSettings) => Promise<void>;
+  onSave: (gamesDir: string, settingsPath: string) => Promise<void>;
   onExportMetadata: () => Promise<void>;
   onImportMetadata: (file: File) => Promise<void>;
   onClearFavorites: () => Promise<void>;
@@ -16,7 +15,6 @@ type SettingsModalProps = {
 
 export function SettingsModal({
   settings,
-  browserSettings,
   busy,
   onCancel,
   onSave,
@@ -28,7 +26,6 @@ export function SettingsModal({
   const metadataInputRef = useRef<HTMLInputElement | null>(null);
   const [gamesDir, setGamesDir] = useState(settings?.gamesDir || "");
   const [settingsPath, setSettingsPath] = useState(settings?.settingsPath || "");
-  const [defaultPlayerVolume, setDefaultPlayerVolume] = useState(browserSettings.defaultPlayerVolume);
   const [error, setError] = useState<string | null>(null);
   const gamesDirChanged = gamesDir.trim() !== (settings?.gamesDir || "");
   const settingsPathChanged = settingsPath.trim() !== (settings?.settingsPath || "");
@@ -48,9 +45,7 @@ export function SettingsModal({
     }
 
     setError(null);
-    await onSave(gamesDir.trim(), settingsPath.trim(), {
-      defaultPlayerVolume
-    });
+    await onSave(gamesDir.trim(), settingsPath.trim());
   }
 
   async function handleClearStorage() {
@@ -101,20 +96,6 @@ export function SettingsModal({
             Docker paths are inside the container. Mount host folders in compose, then point these fields at the mounted path.
             Missing folders and settings files are created automatically.
           </p>
-          <label className="wide">
-            <span>Default player volume</span>
-            <div className="settingsSlider">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={defaultPlayerVolume}
-                onChange={(event) => setDefaultPlayerVolume(clampVolume(Number(event.target.value)))}
-              />
-              <strong>{Math.round(defaultPlayerVolume * 100)}</strong>
-            </div>
-          </label>
           <div className="settingsButtonGroup">
             <input
               ref={metadataInputRef}
@@ -171,8 +152,4 @@ export function SettingsModal({
       </form>
     </div>
   );
-}
-
-function clampVolume(value: number) {
-  return Math.min(1, Math.max(0, value));
 }

@@ -114,6 +114,19 @@ export async function updateGameFavorite(gameId: string, favorite: boolean): Pro
   return data.game;
 }
 
+export async function updateGameVolume(gameId: string, volume: number): Promise<Game> {
+  const response = await fetch(`/api/games/${encodeURIComponent(gameId)}/volume`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ volume })
+  });
+
+  const data = await parseResponse<GameResponse>(response);
+  return data.game;
+}
+
 export async function deleteGame(gameId: string): Promise<string> {
   const response = await fetch(`/api/games/${encodeURIComponent(gameId)}`, {
     method: "DELETE"

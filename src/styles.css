@@ -667,30 +667,6 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-.settingsSlider {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid rgba(245, 241, 232, 0.13);
-  border-radius: 8px;
-  padding: 11px 12px;
-  background: #101114;
-}
-
-.settingsSlider input {
-  padding: 0;
-  border: 0;
-  accent-color: #f6c85f;
-}
-
-.settingsSlider strong {
-  color: rgba(245, 241, 232, 0.72);
-  font-size: 0.88rem;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
 .settingsButtonGroup {
   grid-column: 1 / -1;
   display: flex;

@@ -6,10 +6,6 @@ export type AppSettings = {
   settingsPath: string;
 };
 
-export type BrowserSettings = {
-  defaultPlayerVolume: number;
-};
-
 export type LaunchOptions = {
   parameters?: Record<string, string>;
   allowFullscreen?: boolean;
@@ -26,6 +22,7 @@ export type Game = {
   notes: string;
   tags: string[];
   favorite: boolean;
+  volume: number;
   dateAdded: string;
   timesPlayed: number;
   lastPlayedAt: string | null;

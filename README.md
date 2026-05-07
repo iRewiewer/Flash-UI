@@ -13,7 +13,7 @@ Private Flash game library for a Raspberry Pi or any Docker host. The app scans 
 - Favorite markers with a favorites-only library filter
 - Three shell layouts: compact player rail, split library/player, and full-library browsing
 - Options modal for changing the games folder path and settings JSON path used by the app
-- Options for default player volume, metadata import/export, and browser storage cleanup
+- Options for metadata import/export, favorites cleanup, and browser storage cleanup
 - JSON metadata stored at `games/metadata.json`
 - Docker setup using a bind mount for persistent game files
 
@@ -83,6 +83,7 @@ Metadata is stored in `games/metadata.json`:
       "notes": "Personal notes.",
       "tags": ["arcade", "favorite"],
       "favorite": false,
+      "volume": 0.5,
       "dateAdded": "2026-05-07T00:00:00.000Z",
       "timesPlayed": 0,
       "lastPlayedAt": null,

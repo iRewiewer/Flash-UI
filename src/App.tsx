@@ -9,6 +9,7 @@ import {
   importMetadata,
   updateGameFavorite,
   updateGameMetadata,
+  updateGameVolume,
   updateSettings,
   updateGameThumbnail,
   uploadGame
@@ -20,7 +21,7 @@ import { MetadataModal } from "./components/MetadataModal";
 import { PlayerPanel } from "./components/PlayerPanel";
 import { SettingsModal } from "./components/SettingsModal";
 import { ShellLayoutButton } from "./components/ShellLayoutButton";
-import type { AppSettings, BrowserSettings, Game, LayoutMode, MetadataFormState, ShellLayoutMode } from "./types";
+import type { AppSettings, Game, LayoutMode, MetadataFormState, ShellLayoutMode } from "./types";
 
 type ModalState =
   | {
@@ -51,11 +52,6 @@ export function App() {
   const [modal, setModal] = useState<ModalState>(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [browserSettings, setBrowserSettings] = useState<BrowserSettings>(() => loadBrowserSettings());
-  const [volume, setVolume] = useState(() => {
-    const savedVolume = Number(localStorage.getItem("flash-ui-volume"));
-    return Number.isFinite(savedVolume) ? clampVolume(savedVolume) : loadBrowserSettings().defaultPlayerVolume;
-  });
   const [busy, setBusy] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +72,6 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("flash-ui-favorite-only", favoriteOnly ? "1" : "0");
   }, [favoriteOnly]);
-
-  useEffect(() => {
-    localStorage.setItem("flash-ui-volume", String(volume));
-  }, [volume]);
 
   const filteredGames = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -230,16 +222,13 @@ export function App() {
     }
   }
 
-  async function saveSettings(gamesDir: string, settingsPath: string, nextBrowserSettings: BrowserSettings) {
+  async function saveSettings(gamesDir: string, settingsPath: string) {
     setBusy(true);
     setError(null);
 
     try {
       const nextSettings = await updateSettings(gamesDir, settingsPath);
-      saveBrowserSettings(nextBrowserSettings);
       setSettings(nextSettings);
-      setBrowserSettings(nextBrowserSettings);
-      setVolume(nextBrowserSettings.defaultPlayerVolume);
       setSettingsModalOpen(false);
       setSelectedId(null);
       await refreshGames();
@@ -286,12 +275,9 @@ export function App() {
 
     try {
       await clearBrowserStorage();
-      const resetBrowserSettings = getDefaultBrowserSettings();
-      setBrowserSettings(resetBrowserSettings);
       setLayout("grid");
       setShellLayout("split");
       setFavoriteOnly(false);
-      setVolume(resetBrowserSettings.defaultPlayerVolume);
       setSettingsModalOpen(false);
     } catch (clearError) {
       setError(clearError instanceof Error ? clearError.message : "Could not clear browser storage.");
@@ -329,6 +315,21 @@ export function App() {
       upsertGame(updated);
     } catch (favoriteError) {
       setError(favoriteError instanceof Error ? favoriteError.message : "Could not update favorite.");
+    }
+  }
+
+  async function changeGameVolume(game: Game, volume: number) {
+    const nextVolume = clampVolume(volume);
+    upsertGame({
+      ...game,
+      volume: nextVolume
+    });
+
+    try {
+      const updated = await updateGameVolume(game.id, nextVolume);
+      upsertGame(updated);
+    } catch (volumeError) {
+      setError(volumeError instanceof Error ? volumeError.message : "Could not save game volume.");
     }
   }
 
@@ -413,8 +414,12 @@ export function App() {
       {shellLayout !== "library" && (
         <PlayerPanel
           game={selectedGame}
-          volume={volume}
-          onVolumeChange={setVolume}
+          volume={selectedGame?.volume ?? 0.5}
+          onVolumeChange={(nextVolume) => {
+            if (selectedGame) {
+              changeGameVolume(selectedGame, nextVolume);
+            }
+          }}
           onGameUpdated={upsertGame}
           onEdit={(game) => setModal({ type: "edit", game, initialValue: createFormState(game) })}
         />
@@ -445,7 +450,6 @@ export function App() {
       {settingsModalOpen && (
         <SettingsModal
           settings={settings}
-          browserSettings={browserSettings}
           busy={busy}
           onCancel={() => setSettingsModalOpen(false)}
           onSave={saveSettings}
@@ -459,30 +463,6 @@ export function App() {
       <DropOverlay visible={isDragging} />
     </main>
   );
-}
-
-function getDefaultBrowserSettings(): BrowserSettings {
-  return {
-    defaultPlayerVolume: 0.5
-  };
-}
-
-function loadBrowserSettings(): BrowserSettings {
-  const defaults = getDefaultBrowserSettings();
-  const storedDefaultPlayerVolume = localStorage.getItem("flash-ui-default-volume");
-  const defaultPlayerVolume = storedDefaultPlayerVolume === null
-    ? defaults.defaultPlayerVolume
-    : Number(storedDefaultPlayerVolume);
-
-  return {
-    defaultPlayerVolume: Number.isFinite(defaultPlayerVolume)
-      ? clampVolume(defaultPlayerVolume)
-      : defaults.defaultPlayerVolume
-  };
-}
-
-function saveBrowserSettings(settings: BrowserSettings) {
-  localStorage.setItem("flash-ui-default-volume", String(clampVolume(settings.defaultPlayerVolume)));
 }
 
 function clampVolume(value: number) {

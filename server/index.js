@@ -292,6 +292,27 @@ app.put("/api/games/:id/favorite", async (req, res, next) => {
   }
 });
 
+app.put("/api/games/:id/volume", async (req, res, next) => {
+  try {
+    const id = decodeGameId(req.params.id);
+    const gamePath = resolveGamePath(id);
+    const stat = await fileStat(gamePath);
+    const library = await loadLibrary();
+    const existing = library.games[id] || createDefaultMetadata(id, stat);
+
+    library.games[id] = normalizeMetadata({
+      ...existing,
+      volume: normalizeVolume(req.body?.volume)
+    });
+
+    await saveLibrary(library);
+    const [game] = await scanGames(library, [id]);
+    res.json({ game });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.delete("/api/games/:id", async (req, res, next) => {
   try {
     const id = decodeGameId(req.params.id);
@@ -608,6 +629,7 @@ function createDefaultMetadata(id, stat) {
     notes: "",
     tags: [],
     favorite: false,
+    volume: 0.5,
     dateAdded: stat.birthtime?.toISOString?.() || new Date().toISOString(),
     timesPlayed: 0,
     lastPlayedAt: null,
@@ -628,6 +650,7 @@ function normalizeMetadata(metadata = {}) {
     notes: stringOrEmpty(metadata.notes),
     tags: normalizeTags(metadata.tags),
     favorite: metadata.favorite === true,
+    volume: normalizeVolume(metadata.volume),
     dateAdded: normalizeDate(metadata.dateAdded),
     timesPlayed: Number.isFinite(Number(metadata.timesPlayed)) ? Number(metadata.timesPlayed) : 0,
     lastPlayedAt: metadata.lastPlayedAt || null,
@@ -662,6 +685,11 @@ function normalizeTags(value) {
   }
 
   return [];
+}
+
+function normalizeVolume(value) {
+  const volume = Number(value);
+  return Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.5;
 }
 
 function normalizeDate(value) {
