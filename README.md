@@ -45,7 +45,7 @@ docker compose up --build -d
 Open:
 
 ```text
-http://localhost:8080
+http://localhost:8020
 ```
 
 On the Pi, clone the repo, copy or mount SWFs into `games/`, then run the same compose command. Tailscale can expose the Pi host while the app itself stays bound to your private network.
