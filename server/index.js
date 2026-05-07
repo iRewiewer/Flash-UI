@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url);
 const app = express();
 const port = Number(process.env.PORT || 8020);
 const defaultGamesDir = path.resolve(process.env.GAMES_DIR || path.join(process.cwd(), "games"));
-const settingsPath = path.resolve(process.env.CONFIG_PATH || path.join(process.cwd(), "config", "settings.json"));
+const defaultSettingsPath = path.resolve(process.env.CONFIG_PATH || path.join(process.cwd(), "config", "settings.json"));
 const clientDir = path.resolve(__dirname, "..", "dist");
 
 app.use(express.json({ limit: "1mb" }));
@@ -42,6 +42,7 @@ const metadataUpload = multer({
 
 let settings = await loadSettings();
 let gamesDir = settings.gamesDir;
+let settingsPath = settings.settingsPath;
 
 await ensureStorage();
 
@@ -66,6 +67,7 @@ app.put("/api/settings", async (req, res, next) => {
     const nextSettings = normalizeSettings(req.body);
     settings = nextSettings;
     gamesDir = nextSettings.gamesDir;
+    settingsPath = nextSettings.settingsPath;
     await saveSettings(nextSettings);
     await ensureStorage();
     res.json({ settings: toSettingsResponse() });
@@ -398,29 +400,61 @@ function createUploadStorage() {
 }
 
 async function loadSettings() {
-  try {
-    const raw = await fs.readFile(settingsPath, "utf8");
-    return normalizeSettings(JSON.parse(raw));
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
+  const bootstrapSettings = await readSettingsFile(defaultSettingsPath);
+
+  if (bootstrapSettings) {
+    const normalizedBootstrapSettings = normalizeSettings(bootstrapSettings);
+
+    if (normalizedBootstrapSettings.settingsPath !== defaultSettingsPath) {
+      const linkedSettings = await readSettingsFile(normalizedBootstrapSettings.settingsPath);
+      const normalizedLinkedSettings = normalizeSettings({
+        ...normalizedBootstrapSettings,
+        ...linkedSettings,
+        settingsPath: normalizedBootstrapSettings.settingsPath
+      });
+      await saveSettings(normalizedLinkedSettings);
+      return normalizedLinkedSettings;
     }
 
-    const initialSettings = normalizeSettings({});
-    await saveSettings(initialSettings);
-    return initialSettings;
+    return normalizedBootstrapSettings;
+  }
+
+  const initialSettings = normalizeSettings({});
+  await saveSettings(initialSettings);
+  return initialSettings;
+}
+
+async function readSettingsFile(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
+
+    throw error;
   }
 }
 
 async function saveSettings(nextSettings) {
-  await fs.mkdir(path.dirname(settingsPath), { recursive: true });
-  const tempPath = `${settingsPath}.tmp`;
+  await writeSettingsFile(nextSettings.settingsPath, nextSettings);
+
+  if (nextSettings.settingsPath !== defaultSettingsPath) {
+    await writeSettingsFile(defaultSettingsPath, nextSettings);
+  }
+}
+
+async function writeSettingsFile(filePath, nextSettings) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const tempPath = `${filePath}.tmp`;
   await fs.writeFile(tempPath, `${JSON.stringify(nextSettings, null, 2)}\n`, "utf8");
-  await fs.rename(tempPath, settingsPath);
+  await fs.rename(tempPath, filePath);
 }
 
 function normalizeSettings(value = {}) {
   const rawGamesDir = typeof value.gamesDir === "string" ? value.gamesDir.trim() : defaultGamesDir;
+  const rawSettingsPath = typeof value.settingsPath === "string" ? value.settingsPath.trim() : defaultSettingsPath;
 
   if (!rawGamesDir) {
     const error = new Error("Games folder path is required.");
@@ -428,8 +462,15 @@ function normalizeSettings(value = {}) {
     throw error;
   }
 
+  if (!rawSettingsPath) {
+    const error = new Error("Settings file path is required.");
+    error.status = 400;
+    throw error;
+  }
+
   return {
-    gamesDir: path.resolve(rawGamesDir)
+    gamesDir: path.resolve(rawGamesDir),
+    settingsPath: path.resolve(rawSettingsPath)
   };
 }
 

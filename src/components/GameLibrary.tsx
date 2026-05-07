@@ -50,9 +50,12 @@ export function GameLibrary({
   return (
     <aside className="library">
       <div className="libraryHeader">
-        <div>
-          <p className="eyebrow">Library</p>
-          <h1>Flash UI</h1>
+        <div className="brandLockup">
+          <img src="/logo.png" alt="" />
+          <div>
+            <p className="eyebrow">Library</p>
+            <h1>Flash UI</h1>
+          </div>
         </div>
         <div className="headerActions">
           <button className="iconButton primary" type="button" onClick={onUploadClick} title="Upload SWF">

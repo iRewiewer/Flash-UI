@@ -12,7 +12,7 @@ Private Flash game library for a Raspberry Pi or any Docker host. The app scans 
 - Delete action that removes both the library entry and the SWF file from disk
 - Favorite markers with a favorites-only library filter
 - Three shell layouts: compact player rail, split library/player, and full-library browsing
-- Options modal for changing the games folder path used by the app
+- Options modal for changing the games folder path and settings JSON path used by the app
 - Options for default player volume, metadata import/export, and browser storage cleanup
 - JSON metadata stored at `games/metadata.json`
 - Docker setup using a bind mount for persistent game files
@@ -68,7 +68,7 @@ config/
 
 The server creates missing storage files/directories at startup. SWF files can be placed in `games/` manually or uploaded from the website.
 
-The options modal stores the games folder path in `config/settings.json`. In Docker, that path is interpreted inside the container. To keep games on another drive, mount that drive into the container in `docker-compose.yml`, then set the games folder path to the mounted container path.
+The options modal stores absolute paths for the games folder and settings JSON. Missing folders and settings files are created automatically. In Docker, those paths are interpreted inside the container. To keep games or config on another drive, mount that drive into the container in `docker-compose.yml`, then set the path to the mounted container path.
 
 ## Metadata
 
@@ -82,6 +82,7 @@ Metadata is stored in `games/metadata.json`:
       "description": "Short summary.",
       "notes": "Personal notes.",
       "tags": ["arcade", "favorite"],
+      "favorite": false,
       "dateAdded": "2026-05-07T00:00:00.000Z",
       "timesPlayed": 0,
       "lastPlayedAt": null,

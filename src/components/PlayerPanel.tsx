@@ -82,7 +82,7 @@ export function PlayerPanel({ game, volume, onVolumeChange, onGameUpdated, onEdi
         player.className = "rufflePlayer";
         containerRef.current.appendChild(player);
         playerRef.current = player;
-        player.ruffle().volume = volume;
+        applyPlayerVolume(player, volume);
 
         await player.ruffle().load({
           ...game.launchOptions,
@@ -90,6 +90,7 @@ export function PlayerPanel({ game, volume, onVolumeChange, onGameUpdated, onEdi
           allowFullscreen: true,
           publicPath: "/ruffle/"
         });
+        applyPlayerVolume(player, volume);
 
         if (!cancelled && lastRecordedGameIdRef.current !== game.id) {
           lastRecordedGameIdRef.current = game.id;
@@ -230,6 +231,10 @@ export function PlayerPanel({ game, volume, onVolumeChange, onGameUpdated, onEdi
 
 function clampVolume(value: number) {
   return Math.min(1, Math.max(0, value));
+}
+
+function applyPlayerVolume(player: RuffleElement, volume: number) {
+  player.ruffle().volume = clampVolume(volume);
 }
 
 function loadRuffleScript() {

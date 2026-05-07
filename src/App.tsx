@@ -230,12 +230,12 @@ export function App() {
     }
   }
 
-  async function saveSettings(gamesDir: string, nextBrowserSettings: BrowserSettings) {
+  async function saveSettings(gamesDir: string, settingsPath: string, nextBrowserSettings: BrowserSettings) {
     setBusy(true);
     setError(null);
 
     try {
-      const nextSettings = await updateSettings(gamesDir);
+      const nextSettings = await updateSettings(gamesDir, settingsPath);
       saveBrowserSettings(nextBrowserSettings);
       setSettings(nextSettings);
       setBrowserSettings(nextBrowserSettings);
@@ -290,6 +290,7 @@ export function App() {
       setBrowserSettings(resetBrowserSettings);
       setLayout("grid");
       setShellLayout("split");
+      setFavoriteOnly(false);
       setVolume(resetBrowserSettings.defaultPlayerVolume);
       setSettingsModalOpen(false);
     } catch (clearError) {
@@ -462,13 +463,16 @@ export function App() {
 
 function getDefaultBrowserSettings(): BrowserSettings {
   return {
-    defaultPlayerVolume: 1
+    defaultPlayerVolume: 0.5
   };
 }
 
 function loadBrowserSettings(): BrowserSettings {
   const defaults = getDefaultBrowserSettings();
-  const defaultPlayerVolume = Number(localStorage.getItem("flash-ui-default-volume"));
+  const storedDefaultPlayerVolume = localStorage.getItem("flash-ui-default-volume");
+  const defaultPlayerVolume = storedDefaultPlayerVolume === null
+    ? defaults.defaultPlayerVolume
+    : Number(storedDefaultPlayerVolume);
 
   return {
     defaultPlayerVolume: Number.isFinite(defaultPlayerVolume)

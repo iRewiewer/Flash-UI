@@ -28,13 +28,13 @@ export async function fetchSettings(): Promise<AppSettings> {
   return data.settings;
 }
 
-export async function updateSettings(gamesDir: string): Promise<AppSettings> {
+export async function updateSettings(gamesDir: string, settingsPath: string): Promise<AppSettings> {
   const response = await fetch("/api/settings", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ gamesDir })
+    body: JSON.stringify({ gamesDir, settingsPath })
   });
 
   const data = await parseResponse<SettingsResponse>(response);

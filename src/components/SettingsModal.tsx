@@ -7,7 +7,7 @@ type SettingsModalProps = {
   browserSettings: BrowserSettings;
   busy: boolean;
   onCancel: () => void;
-  onSave: (gamesDir: string, browserSettings: BrowserSettings) => Promise<void>;
+  onSave: (gamesDir: string, settingsPath: string, browserSettings: BrowserSettings) => Promise<void>;
   onExportMetadata: () => Promise<void>;
   onImportMetadata: (file: File) => Promise<void>;
   onClearFavorites: () => Promise<void>;
@@ -27,9 +27,12 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const metadataInputRef = useRef<HTMLInputElement | null>(null);
   const [gamesDir, setGamesDir] = useState(settings?.gamesDir || "");
+  const [settingsPath, setSettingsPath] = useState(settings?.settingsPath || "");
   const [defaultPlayerVolume, setDefaultPlayerVolume] = useState(browserSettings.defaultPlayerVolume);
   const [error, setError] = useState<string | null>(null);
   const gamesDirChanged = gamesDir.trim() !== (settings?.gamesDir || "");
+  const settingsPathChanged = settingsPath.trim() !== (settings?.settingsPath || "");
+  const storagePathChanged = gamesDirChanged || settingsPathChanged;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -39,8 +42,13 @@ export function SettingsModal({
       return;
     }
 
+    if (!settingsPath.trim()) {
+      setError("Settings file path is required.");
+      return;
+    }
+
     setError(null);
-    await onSave(gamesDir.trim(), {
+    await onSave(gamesDir.trim(), settingsPath.trim(), {
       defaultPlayerVolume
     });
   }
@@ -72,7 +80,7 @@ export function SettingsModal({
 
         <div className="formGrid">
           <label className="wide">
-            <span>Games folder path</span>
+            <span>Games folder path (absolute)</span>
             <input
               value={gamesDir}
               onChange={(event) => setGamesDir(event.target.value)}
@@ -80,9 +88,16 @@ export function SettingsModal({
               required
             />
           </label>
-          {settings?.settingsPath && (
-            <p className="settingsHint">Settings file: {settings.settingsPath}</p>
-          )}
+          <label className="wide">
+            <span>Settings file path (absolute)</span>
+            <input
+              value={settingsPath}
+              onChange={(event) => setSettingsPath(event.target.value)}
+              placeholder="/data/config/settings.json"
+              required
+            />
+          </label>
+          <p className="settingsHint">Missing folders and settings files are created automatically.</p>
           <label className="wide">
             <span>Default player volume</span>
             <div className="settingsSlider">
@@ -138,7 +153,7 @@ export function SettingsModal({
             <button type="button" onClick={onCancel} disabled={busy}>
               Cancel
             </button>
-            {gamesDirChanged && (
+            {storagePathChanged && (
               <button className="primaryAction" type="submit" disabled={busy}>
                 <RotateCw size={17} />
                 {busy ? "Reloading" : "Reload"}
